@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from imblearn.over_sampling import SMOTE
@@ -44,7 +44,12 @@ for col in binary_cols:
     label_encoders[col] = le
 
 # One-hot encode multi-class categorical columns
-df = pd.get_dummies(df, columns=multi_cols, drop_first=True)
+ohe = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+encoded_cols = ohe.fit_transform(df[multi_cols])
+encoded_df = pd.DataFrame(encoded_cols, columns=ohe.get_feature_names_out(multi_cols), index=df.index)
+
+df = df.drop(columns=multi_cols)
+df = pd.concat([df, encoded_df], axis=1)
 
 X = df.drop('Churn', axis=1)
 y = df['Churn']
@@ -54,6 +59,7 @@ feature_columns = X.columns.tolist()
 os.makedirs('../ml_models/saved_models', exist_ok=True)
 joblib.dump(feature_columns, '../ml_models/saved_models/churn_features.joblib')
 joblib.dump(label_encoders, '../ml_models/saved_models/churn_label_encoders.joblib')
+joblib.dump(ohe, '../ml_models/saved_models/churn_onehot_encoder.joblib')
 
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
@@ -73,9 +79,9 @@ joblib.dump(scaler, '../ml_models/saved_models/churn_scaler.joblib')
 print("Training Advanced XGBoost model...")
 # Fine-tuned XGBoost Model
 model = XGBClassifier(
-    n_estimators=300,
-    learning_rate=0.05,
-    max_depth=6,
+    n_estimators=400,
+    learning_rate=0.03,
+    max_depth=7,
     subsample=0.8,
     colsample_bytree=0.8,
     use_label_encoder=False, 

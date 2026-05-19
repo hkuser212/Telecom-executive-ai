@@ -1,5 +1,5 @@
 # Churn Model Performance Report
-**Date Generated:** 2026-05-19 23:00:06
+**Date Generated:** 2026-05-20 01:39:46
 
 ## Executive Summary
 This report details the performance of the updated XGBoost Churn Prediction Model. 
@@ -14,29 +14,29 @@ To increase accuracy and handle the inherent class imbalance (where only 26% of 
 ## Evaluation Metrics
 
 ### 1. Training Accuracy (On SMOTE Balanced Data)
-**Accuracy:** 91.54%
+**Accuracy:** 93.11%
 *(This shows the model's ability to learn the patterns when classes are perfectly balanced, hitting the 90%+ mark.)*
 
 ### 2. Testing Accuracy (On Real-World Unseen Data)
-**Accuracy:** 77.00%
+**Accuracy:** 78.64%
 
 ### 3. Detailed Classification Report
 ```text
               precision    recall  f1-score   support
 
-           0       0.86      0.82      0.84      1035
-           1       0.56      0.63      0.59       374
+           0       0.85      0.86      0.86      1035
+           1       0.60      0.59      0.59       374
 
-    accuracy                           0.77      1409
-   macro avg       0.71      0.72      0.72      1409
-weighted avg       0.78      0.77      0.77      1409
+    accuracy                           0.79      1409
+   macro avg       0.73      0.72      0.72      1409
+weighted avg       0.78      0.79      0.79      1409
 
 ```
 
 ### 4. Confusion Matrix
 ```text
-[[ True Negatives: 850 | False Positives: 185 ]
- [ False Negatives: 139 | True Positives: 235 ]]
+[[ True Negatives: 889 | False Positives: 146 ]
+ [ False Negatives: 155 | True Positives: 219 ]]
 ```
 
 ## Insights & Next Steps

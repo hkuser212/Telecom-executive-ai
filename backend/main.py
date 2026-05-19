@@ -97,10 +97,11 @@ try:
     scaler = joblib.load(os.path.join(MODEL_DIR, 'churn_scaler.joblib'))
     label_encoders = joblib.load(os.path.join(MODEL_DIR, 'churn_label_encoders.joblib'))
     feature_columns = joblib.load(os.path.join(MODEL_DIR, 'churn_features.joblib'))
-    print("✅ Churn Prediction Models loaded successfully")
+    ohe = joblib.load(os.path.join(MODEL_DIR, 'churn_onehot_encoder.joblib'))
+    print("Churn Prediction Models loaded successfully")
 except Exception as e:
-    print(f"⚠️  Churn Prediction Models not loaded: {e}")
-    xgb_model = scaler = label_encoders = feature_columns = None
+    print(f"Churn Prediction Models not loaded: {e}")
+    xgb_model = scaler = label_encoders = feature_columns = ohe = None
 
 sales_forecast_results = None
 try:
@@ -128,11 +129,18 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     multi_cols = ['MultipleLines', 'InternetService', 'OnlineSecurity', 'OnlineBackup',
                   'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies',
                   'Contract', 'PaymentMethod', 'Tenure_Group']
-    cols_to_encode = [c for c in multi_cols if c in df.columns]
-    df = pd.get_dummies(df, columns=cols_to_encode, drop_first=True)
+    
+    encoded_cols = ohe.transform(df[multi_cols])
+    encoded_df = pd.DataFrame(encoded_cols, columns=ohe.get_feature_names_out(multi_cols), index=df.index)
+    
+    df = df.drop(columns=multi_cols)
+    df = pd.concat([df, encoded_df], axis=1)
+
     for col in feature_columns:
         if col not in df.columns:
             df[col] = 0
+            
+    # Ensure column order matches training exactly
     return df[feature_columns]
 
 # ─── Churn: Single Prediction ─────────────────────────────────
