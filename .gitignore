@@ -1,0 +1,18 @@
+# Environments
+.env
+backend/venv/
+venv/
+__pycache__/
+*.pyc
+
+# Dependencies
+frontend/node_modules/
+frontend/dist/
+
+# Large files & datasets
+datasets/
+ml_models/saved_models/
+
+# OS files
+.DS_Store
+Thumbs.db

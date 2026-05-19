@@ -1,0 +1,69 @@
+# ============================================================
+# Executive AI Decision Dashboard - Backend Requirements
+# ============================================================
+
+# --- Web Framework ---
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+
+# --- HTTP & CORS ---
+httpx==0.27.0
+starlette==0.37.2
+
+# --- Database ---
+sqlalchemy==2.0.30
+psycopg2-binary==2.9.9          # PostgreSQL
+pymongo==4.7.2                   # MongoDB
+motor==3.4.0                     # Async MongoDB driver
+
+# --- Data & ML Core ---
+numpy==1.26.4
+pandas==2.2.2
+scikit-learn==1.5.0
+joblib==1.4.2
+
+# --- ML Models: Churn Prediction ---
+xgboost==2.0.3
+lightgbm==4.3.0
+
+# --- ML Models: Sales Forecasting ---
+prophet==1.1.5
+statsmodels==0.14.2              # ARIMA
+tensorflow==2.16.1               # LSTM (or torch below)
+# torch==2.3.0                   # Uncomment if using PyTorch instead of TF
+
+# --- NLP & Sentiment Analysis ---
+transformers==4.41.0             # BERT / DistilBERT
+torch==2.3.0                     # Required for HuggingFace
+vaderSentiment==3.3.2
+sentence-transformers==3.0.0
+
+# --- Explainable AI ---
+shap==0.45.1
+
+# --- RAG Chatbot / Vector DB ---
+chromadb==0.5.0
+openai==1.30.1                   # OpenAI Embeddings (if using GPT-based chatbot)
+
+# --- Real-time / Streaming ---
+websockets==12.0
+# kafka-python==2.0.2            # Uncomment if using Kafka
+
+# --- Report Generation (PDF & PPT) ---
+reportlab==4.2.0                 # PDF generation
+python-pptx==0.6.23             # PPT generation
+matplotlib==3.9.0
+seaborn==0.13.2
+Pillow==10.3.0
+
+# --- Utility ---
+python-dotenv==1.0.1
+pydantic==2.7.1
+pydantic-settings==2.2.1
+loguru==0.7.2
+tenacity==8.3.0
+
+# --- Testing ---
+pytest==8.2.1
+httpx==0.27.0
