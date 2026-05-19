@@ -1,14 +1,16 @@
-import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, TrendingUp, MessageSquare,
-  Bot, FileText, Bell, Settings, RefreshCw, Activity
+  Bot, FileText, Bell, Settings, RefreshCw, Activity, LogOut
 } from 'lucide-react';
+import { useState } from 'react';
 import ExecutiveOverview from './pages/ExecutiveOverview';
 import CustomerAnalytics from './pages/CustomerAnalytics';
 import SalesIntelligence from './pages/SalesIntelligence';
 import SentimentMonitoring from './pages/SentimentMonitoring';
 import AIAssistant from './pages/AIAssistant';
 import Reports from './pages/Reports';
+import AuthPage from './pages/AuthPage';
 import './index.css';
 
 const NAV = [
@@ -20,7 +22,8 @@ const NAV = [
   { to: '/reports', icon: <FileText size={17} />, label: 'Reports' },
 ];
 
-function Sidebar() {
+function Sidebar({ user, onLogout }) {
+  const initials = user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'EA';
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
@@ -42,17 +45,17 @@ function Sidebar() {
           </NavLink>
         ))}
         <div className="nav-section-label" style={{ marginTop: 16 }}>System</div>
-        <button className="nav-item">
-          <span className="nav-icon"><Settings size={17} /></span>
-          Settings
+        <button className="nav-item"><span className="nav-icon"><Settings size={17} /></span>Settings</button>
+        <button className="nav-item" onClick={onLogout} style={{ color: '#ef4444' }}>
+          <span className="nav-icon"><LogOut size={17} /></span>Logout
         </button>
       </nav>
       <div className="sidebar-footer">
         <div className="user-chip">
-          <div className="user-avatar">EA</div>
+          <div className="user-avatar">{initials}</div>
           <div className="user-info">
-            <p>Exec Analyst</p>
-            <span>admin@telecom.ai</span>
+            <p>{user?.name || 'Exec Analyst'}</p>
+            <span>{user?.email || 'admin@telecom.ai'}</span>
           </div>
         </div>
       </div>
@@ -88,25 +91,47 @@ function Topbar() {
   );
 }
 
+function DashboardLayout({ user, onLogout }) {
+  return (
+    <div className="app-layout">
+      <Sidebar user={user} onLogout={onLogout} />
+      <div className="main-content">
+        <Topbar />
+        <main className="page-body">
+          <Routes>
+            <Route path="/" element={<ExecutiveOverview />} />
+            <Route path="/customers" element={<CustomerAnalytics />} />
+            <Route path="/sales" element={<SalesIntelligence />} />
+            <Route path="/sentiment" element={<SentimentMonitoring />} />
+            <Route path="/assistant" element={<AIAssistant />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </main>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const storedName = localStorage.getItem('user_name');
+  const storedToken = localStorage.getItem('auth_token');
+  const [user, setUser] = useState(storedToken && storedName ? { name: storedName } : null);
+
+  const handleAuthSuccess = (userData) => setUser(userData);
+
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_name');
+    setUser(null);
+  };
+
   return (
     <BrowserRouter>
-      <div className="app-layout">
-        <Sidebar />
-        <div className="main-content">
-          <Topbar />
-          <main className="page-body">
-            <Routes>
-              <Route path="/" element={<ExecutiveOverview />} />
-              <Route path="/customers" element={<CustomerAnalytics />} />
-              <Route path="/sales" element={<SalesIntelligence />} />
-              <Route path="/sentiment" element={<SentimentMonitoring />} />
-              <Route path="/assistant" element={<AIAssistant />} />
-              <Route path="/reports" element={<Reports />} />
-            </Routes>
-          </main>
-        </div>
-      </div>
+      {user
+        ? <DashboardLayout user={user} onLogout={handleLogout} />
+        : <AuthPage onAuthSuccess={handleAuthSuccess} />
+      }
     </BrowserRouter>
   );
 }
