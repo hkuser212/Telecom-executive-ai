@@ -106,9 +106,9 @@ except Exception as e:
 sales_forecast_results = None
 try:
     sales_forecast_results = joblib.load(os.path.join(MODEL_DIR, 'sales_forecast_results.joblib'))
-    print("✅ Sales Forecasting Results loaded successfully")
+    print("Sales Forecasting Results loaded successfully")
 except Exception as e:
-    print(f"⚠️  Sales Forecasting Results not loaded: {e}")
+    print(f"Sales Forecasting Results not loaded: {e}")
 
 # ─── Preprocessing helper ────────────────────────────────────
 def tenure_group(t):
