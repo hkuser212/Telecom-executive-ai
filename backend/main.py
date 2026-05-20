@@ -110,6 +110,15 @@ try:
 except Exception as e:
     print(f"Sales Forecasting Results not loaded: {e}")
 
+sentiment_model = None
+sentiment_vectorizer = None
+try:
+    sentiment_model = joblib.load(os.path.join(MODEL_DIR, 'sentiment_model.joblib'))
+    sentiment_vectorizer = joblib.load(os.path.join(MODEL_DIR, 'sentiment_vectorizer.joblib'))
+    print("Sentiment NLP Models loaded successfully")
+except Exception as e:
+    print(f"Sentiment NLP Models not loaded: {e}")
+
 # ─── Preprocessing helper ────────────────────────────────────
 def tenure_group(t):
     if t <= 12: return '0-1_Year'
@@ -673,3 +682,83 @@ async def forecast_sales_upload(file: UploadFile = File(...)):
         "aggregated_months": total_months
     }
 
+# ─── Sentiment Analysis Endpoints ────────────────────────────────────
+
+class SentimentRequest(BaseModel):
+    text: str
+
+@app.get("/sentiment-dashboard")
+def get_sentiment_dashboard():
+    return {
+        "kpis": {
+            "positive": {"value": 63, "change": "+5% this week", "trend": "up"},
+            "neutral": {"value": 23, "change": "Stable", "trend": "flat"},
+            "negative": {"value": 14, "change": "-3% this week (good)", "trend": "up"}
+        },
+        "sentimentTrend": [
+            { "week": 'W1', "positive": 55, "neutral": 27, "negative": 18 },
+            { "week": 'W2', "positive": 60, "neutral": 24, "negative": 16 },
+            { "week": 'W3', "positive": 52, "neutral": 28, "negative": 20 },
+            { "week": 'W4', "positive": 65, "neutral": 22, "negative": 13 },
+            { "week": 'W5', "positive": 58, "neutral": 25, "negative": 17 },
+            { "week": 'W6', "positive": 70, "neutral": 20, "negative": 10 },
+            { "week": 'W7', "positive": 63, "neutral": 23, "negative": 14 },
+            { "week": 'W8', "positive": 68, "neutral": 21, "negative": 11 },
+        ],
+        "topicsData": [
+            { "topic": 'Network Quality', "negative": 42, "positive": 12 },
+            { "topic": 'Billing Issues', "negative": 38, "positive": 8 },
+            { "topic": 'Customer Support', "negative": 29, "positive": 35 },
+            { "topic": 'Plan Value', "negative": 18, "positive": 42 },
+            { "topic": 'App Experience', "negative": 12, "positive": 55 },
+            { "topic": 'Coverage', "negative": 35, "positive": 18 },
+        ],
+        "sourcePie": [
+            { "name": 'Twitter', "value": 38, "color": '#3b82f6' },
+            { "name": 'Support Tickets', "value": 28, "color": '#8b5cf6' },
+            { "name": 'App Reviews', "value": 22, "color": '#10b981' },
+            { "name": 'Chat Logs', "value": 12, "color": '#f59e0b' },
+        ],
+        "recentFeedback": [
+            { "text": 'Network has been terrible in Assam region for the past week!', "sentiment": 'negative', "source": 'Twitter', "time": '2m ago' },
+            { "text": 'Finally a telecom that picks up within 2 rings. Excellent support!', "sentiment": 'positive', "source": 'Support', "time": '8m ago' },
+            { "text": 'Billing is confusing, I was charged twice for the same plan.', "sentiment": 'negative', "source": 'App Review', "time": '15m ago' },
+            { "text": 'Coverage in metro areas is flawless. Very satisfied.', "sentiment": 'positive', "source": 'Twitter', "time": '22m ago' },
+            { "text": 'Average plan for average price. Nothing special.', "sentiment": 'neutral', "source": 'Chat', "time": '35m ago' },
+        ]
+    }
+
+import re
+def clean_sentiment_text(text):
+    text = text.lower()
+    text = re.sub(r'http\S+|www\.\S+', '', text)
+    text = re.sub(r'<.*?>', '', text)
+    text = re.sub(r'@\w+', '', text)
+    text = re.sub(r'[^a-zA-Z\s]', '', text)
+    return re.sub(r'\s+', ' ', text).strip()
+
+@app.post("/predict-sentiment")
+def predict_sentiment(req: SentimentRequest):
+    if sentiment_model is None or sentiment_vectorizer is None:
+        raise HTTPException(status_code=500, detail="Sentiment models not loaded.")
+    
+    cleaned_text = clean_sentiment_text(req.text)
+    if not cleaned_text:
+        return {"sentiment": "neutral", "confidence": 1.0, "message": "Empty or invalid text."}
+    
+    # Vectorize
+    vec = sentiment_vectorizer.transform([cleaned_text])
+    
+    # Predict
+    pred = sentiment_model.predict(vec)[0]
+    
+    # Get probabilities
+    probs = sentiment_model.predict_proba(vec)[0]
+    confidence = max(probs)
+    
+    return {
+        "text": req.text,
+        "cleaned_text": cleaned_text,
+        "sentiment": pred,
+        "confidence": float(confidence)
+    }
