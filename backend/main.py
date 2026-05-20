@@ -119,6 +119,17 @@ try:
 except Exception as e:
     print(f"Sentiment NLP Models not loaded: {e}")
 
+triage_vectorizer = None
+triage_type_model = None
+triage_priority_model = None
+try:
+    triage_vectorizer = joblib.load(os.path.join(MODEL_DIR, 'triage_vectorizer.joblib'))
+    triage_type_model = joblib.load(os.path.join(MODEL_DIR, 'triage_type_model.joblib'))
+    triage_priority_model = joblib.load(os.path.join(MODEL_DIR, 'triage_priority_model.joblib'))
+    print("Support Triage Models loaded successfully")
+except Exception as e:
+    print(f"Support Triage Models not loaded: {e}")
+
 # ─── Preprocessing helper ────────────────────────────────────
 def tenure_group(t):
     if t <= 12: return '0-1_Year'
@@ -761,4 +772,43 @@ def predict_sentiment(req: SentimentRequest):
         "cleaned_text": cleaned_text,
         "sentiment": pred,
         "confidence": float(confidence)
+    }
+
+# ─── Support Triage Endpoints ────────────────────────────────────
+
+class TriageRequest(BaseModel):
+    subject: str = ""
+    description: str
+
+@app.post("/predict-triage")
+def predict_triage(req: TriageRequest):
+    if triage_vectorizer is None or triage_type_model is None or triage_priority_model is None:
+        raise HTTPException(status_code=500, detail="Triage models not loaded.")
+        
+    full_text = req.subject + " " + req.description
+    cleaned_text = clean_sentiment_text(full_text) # Reusing the sentiment cleaner as it does exactly what we need
+    
+    if not cleaned_text:
+        return {
+            "ticket_type": "Unknown",
+            "type_confidence": 0.0,
+            "priority": "Unknown",
+            "priority_confidence": 0.0
+        }
+        
+    vec = triage_vectorizer.transform([cleaned_text])
+    
+    type_pred = triage_type_model.predict(vec)[0]
+    type_probs = triage_type_model.predict_proba(vec)[0]
+    type_conf = max(type_probs)
+    
+    pri_pred = triage_priority_model.predict(vec)[0]
+    pri_probs = triage_priority_model.predict_proba(vec)[0]
+    pri_conf = max(pri_probs)
+    
+    return {
+        "ticket_type": type_pred,
+        "type_confidence": float(type_conf),
+        "priority": pri_pred,
+        "priority_confidence": float(pri_conf)
     }

@@ -50,6 +50,28 @@ export default function CustomerAnalytics() {
   const [manualResult, setManualResult] = useState(null);
   const [manualLoading, setManualLoading] = useState(false);
 
+  // State for AI Support Triage
+  const [triageData, setTriageData] = useState({ subject: "", description: "" });
+  const [triageResult, setTriageResult] = useState(null);
+  const [triageLoading, setTriageLoading] = useState(false);
+
+  const handleTriagePredict = async (e) => {
+    e.preventDefault();
+    setTriageLoading(true);
+    try {
+      const res = await fetch('http://127.0.0.1:8000/predict-triage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(triageData)
+      });
+      const data = await res.json();
+      setTriageResult(data);
+    } catch (err) {
+      alert("Failed to connect to triage API");
+    }
+    setTriageLoading(false);
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -278,6 +300,73 @@ export default function CustomerAnalytics() {
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      {/* AI Support Triage Widget */}
+      <div className="card mb-6" style={{ background: 'linear-gradient(145deg, rgba(30, 41, 59, 0.4) 0%, var(--bg-secondary) 100%)', border: '1px solid rgba(255,255,255,0.05)', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+        <div className="card-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+          <div>
+            <div className="card-title" style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: 'var(--accent-purple)' }}>✦</span> AI Support Auto-Triage
+            </div>
+            <div className="card-subtitle" style={{ opacity: 0.7 }}>Test the NLP routing engine with a simulated support ticket</div>
+          </div>
+        </div>
+        <div style={{ padding: '20px' }}>
+          <form onSubmit={handleTriagePredict} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <input 
+              name="subject"
+              type="text"
+              value={triageData.subject}
+              onChange={(e) => setTriageData({...triageData, subject: e.target.value})}
+              placeholder="Ticket Subject (e.g. Cannot connect to internet)"
+              style={{
+                background: 'rgba(0, 0, 0, 0.2)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', padding: '12px 16px', color: '#fff', fontSize: '0.95rem', outline: 'none'
+              }}
+            />
+            <textarea 
+              name="description"
+              value={triageData.description}
+              onChange={(e) => setTriageData({...triageData, description: e.target.value})}
+              placeholder="Detailed description of the problem..."
+              style={{ 
+                minHeight: '80px', resize: 'none', background: 'rgba(0, 0, 0, 0.2)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', padding: '16px', color: '#fff', fontFamily: 'inherit', fontSize: '0.95rem', outline: 'none'
+              }}
+            />
+            <button 
+              type="submit" 
+              disabled={triageLoading || !triageData.description.trim()} 
+              style={{ 
+                alignSelf: 'flex-start',
+                background: triageLoading ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+                color: '#fff', border: 'none', borderRadius: '12px', padding: '12px 28px', fontWeight: 600, fontSize: '1rem', cursor: (triageLoading || !triageData.description.trim()) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {triageLoading ? 'Routing...' : 'Auto-Triage Ticket'}
+            </button>
+          </form>
+
+          {triageResult && (
+            <div style={{ marginTop: 20, padding: '20px', background: 'rgba(0, 0, 0, 0.25)', borderRadius: '12px', display: 'flex', gap: 24, border: `1px solid rgba(255,255,255,0.05)`, animation: 'fadeIn 0.3s ease' }}>
+              <div style={{ flex: 1, borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: 24 }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: 8 }}>Predicted Ticket Type</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span className="badge blue" style={{ fontSize: '1rem', padding: '8px 16px' }}>{triageResult.ticket_type}</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Conf: {(triageResult.type_confidence * 100).toFixed(1)}%</span>
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: 8 }}>Predicted Priority</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span className={`badge ${triageResult.priority === 'Critical' ? 'red' : triageResult.priority === 'High' ? 'orange' : triageResult.priority === 'Medium' ? 'blue' : 'green'}`} style={{ fontSize: '1rem', padding: '8px 16px', boxShadow: triageResult.priority === 'Critical' ? '0 0 10px rgba(239,68,68,0.5)' : 'none' }}>
+                    {triageResult.priority}
+                  </span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Conf: {(triageResult.priority_confidence * 100).toFixed(1)}%</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>
