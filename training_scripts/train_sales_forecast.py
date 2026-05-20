@@ -88,22 +88,27 @@ print(f"Test size: {len(test_df)} months ({test_df['date'].min().strftime('%Y-%m
 
 # 4. Model 1: Prophet
 print("\nTraining Prophet model...")
-prophet_train = train_df[['date', 'scaled_sales']].rename(columns={'date': 'ds', 'scaled_sales': 'y'})
-prophet_model = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
-prophet_model.fit(prophet_train)
+prophet_failed = False
+try:
+    prophet_train = train_df[['date', 'scaled_sales']].rename(columns={'date': 'ds', 'scaled_sales': 'y'})
+    prophet_model = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
+    prophet_model.fit(prophet_train)
 
-# Prophet Validation Forecast
-future_prophet = prophet_model.make_future_dataframe(periods=12, freq='M')
-forecast_prophet_all = prophet_model.predict(future_prophet)
-val_pred_prophet = forecast_prophet_all.iloc[train_size:]['yhat'].values
+    # Prophet Validation Forecast
+    future_prophet = prophet_model.make_future_dataframe(periods=12, freq='M')
+    forecast_prophet_all = prophet_model.predict(future_prophet)
+    val_pred_prophet = forecast_prophet_all.iloc[train_size:]['yhat'].values
 
-# Prophet Full-Model Future Forecast (Next 12 months)
-prophet_full_train = monthly_sales[['date', 'scaled_sales']].rename(columns={'date': 'ds', 'scaled_sales': 'y'})
-prophet_full_model = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
-prophet_full_model.fit(prophet_full_train)
-future_full = prophet_full_model.make_future_dataframe(periods=12, freq='M')
-forecast_full_prophet = prophet_full_model.predict(future_full)
-future_pred_prophet = forecast_full_prophet.iloc[len(monthly_sales):]['yhat'].values
+    # Prophet Full-Model Future Forecast (Next 12 months)
+    prophet_full_train = monthly_sales[['date', 'scaled_sales']].rename(columns={'date': 'ds', 'scaled_sales': 'y'})
+    prophet_full_model = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False)
+    prophet_full_model.fit(prophet_full_train)
+    future_full = prophet_full_model.make_future_dataframe(periods=12, freq='M')
+    forecast_full_prophet = prophet_full_model.predict(future_full)
+    future_pred_prophet = forecast_full_prophet.iloc[len(monthly_sales):]['yhat'].values
+except Exception as e:
+    print(f"Prophet training failed, using ARIMA/LightGBM fallbacks: {e}")
+    prophet_failed = True
 
 # 5. Model 2: ARIMA (statsmodels)
 print("Training ARIMA (SARIMAX) model...")
@@ -190,9 +195,16 @@ print("\n--- Model Performance Comparison ---")
 y_true = test_df['scaled_sales'].values
 
 # Prophet Metrics
-mape_prophet = mean_absolute_percentage_error(y_true, val_pred_prophet)
-rmse_prophet = np.sqrt(mean_squared_error(y_true, val_pred_prophet))
-print(f"Prophet - MAPE: {mape_prophet * 100:.2f}%, RMSE: {rmse_prophet:.4f}")
+if not prophet_failed:
+    mape_prophet = mean_absolute_percentage_error(y_true, val_pred_prophet)
+    rmse_prophet = np.sqrt(mean_squared_error(y_true, val_pred_prophet))
+    print(f"Prophet - MAPE: {mape_prophet * 100:.2f}%, RMSE: {rmse_prophet:.4f}")
+else:
+    mape_prophet = 999.0
+    rmse_prophet = 999.0
+    val_pred_prophet = val_pred_arima.copy()
+    future_pred_prophet = future_pred_arima.copy()
+    print("Prophet - Skipped due to training failure (using ARIMA/LightGBM fallback).")
 
 # ARIMA Metrics
 mape_arima = mean_absolute_percentage_error(y_true, val_pred_arima)
@@ -205,7 +217,7 @@ rmse_lgb = np.sqrt(mean_squared_error(y_true, val_pred_lgb))
 print(f"LightGBM - MAPE: {mape_lgb * 100:.2f}%, RMSE: {rmse_lgb:.4f}")
 
 # Select the best validation model
-best_model_name = "Prophet"
+best_model_name = "Prophet" if not prophet_failed else "ARIMA"
 best_mape = mape_prophet
 if mape_arima < best_mape:
     best_model_name = "ARIMA"
